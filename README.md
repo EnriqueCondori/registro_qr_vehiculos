@@ -1,7 +1,7 @@
 # registro_qr_vehiculos
-<<<<<<< HEAD
+
 Elaboracion de una aplicacion para el registro de vehiculos 
-=======
+
 
 A new Flutter project.
 
