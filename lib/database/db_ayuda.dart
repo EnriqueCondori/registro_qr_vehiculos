@@ -11,6 +11,7 @@ class DBAyuda {
     _db = await initDb();
     return _db!;
   }
+
   static Future<Database> initDb() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
     String path = join(documentsDirectory.path, "registros.db");
@@ -34,18 +35,21 @@ class DBAyuda {
   static Future<int> insertarRegistro(String qr) async {
     final dbClient = await db;
 
-    return await dbClient.insert(
-      "registros",
-      {
-        "qr": qr,
-        "fecha": DateTime.now().toIso8601String(),
-      },
-    );
+    return await dbClient.insert("registros", {
+      "qr": qr,
+      "fecha": DateTime.now().toIso8601String(),
+    });
   }
 
   // Obtener todos los registros
   static Future<List<Map<String, dynamic>>> obtenerRegistros() async {
     final dbClient = await db;
     return await dbClient.query("registros", orderBy: "id DESC");
+  }
+
+  //Eliminar
+  static Future<int> eliminarRegistro(int id) async {
+    final dbClient = await db;
+    return await dbClient.delete("registros", where: "id = ?", whereArgs: [id]);
   }
 }

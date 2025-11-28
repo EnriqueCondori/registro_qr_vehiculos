@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:registro_qr_vehiculos/database/db_ayuda.dart';
-import 'package:registro_qr_vehiculos/historial.dart';
+import 'package:registro_qr_vehiculos/historial_registros.dart';
 
 void main() {
   runApp(const MyApp());
@@ -77,7 +77,7 @@ class _MyHomePageState extends State<MyHomePage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => HistorialPage()),
+                MaterialPageRoute(builder: (_) => HistorialRegistros()),
               );
             },
             child: Text("Ver historial"),
