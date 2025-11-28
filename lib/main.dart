@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:registro_qr_vehiculos/database/db_ayuda.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -13,9 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Registro Vehículos',
-      theme: ThemeData(
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
+      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
       home: const MyHomePage(title: 'Registro Vehicular'),
     );
   }
@@ -30,9 +29,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-
-  String qrData="No se ha encontrado nada";
-
+  String qrData = "No se ha encontrado nada";
 
   @override
   Widget build(BuildContext context) {
@@ -52,27 +49,27 @@ class _MyHomePageState extends State<MyHomePage> {
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body:  Column(
+      body: Column(
         children: [
-           Expanded(
+          Expanded(
             flex: 1,
             child: MobileScanner(
               onDetect: (capture) async {
-  final barcodes = capture.barcodes;
-  if (barcodes.isNotEmpty) {
-    final qr = barcodes.first.rawValue ?? "QR vacío";
+                final barcodes = capture.barcodes;
+                if (barcodes.isNotEmpty) {
+                  final qr = barcodes.first.rawValue ?? "QR vacío";
 
-    await DBAyuda.insertarRegistro(qr);
+                  await DBAyuda.insertarRegistro(qr);
 
-    setState(() {
-      qrData = qr;
-    });
+                  setState(() {
+                    qrData = qr;
+                  });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Guardado en BD: $qr")),
-    );
-  }
-},
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Guardado en BD: $qr")),
+                  );
+                }
+              },
             ),
           ),
           Expanded(
@@ -83,9 +80,19 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
           ),
+          Expanded(child: ElevatedButton(
+            onPressed: () async {
+              final registros = await DBAyuda.obtenerRegistros();
+              print("📌 Registros en BD:");
+              for (var r in registros) {
+                print(r);
+              }
+            },
+            child: Text("Ver registros en consola"),
+          ),)
+          
         ],
       ),
     );
-    
   }
 }
