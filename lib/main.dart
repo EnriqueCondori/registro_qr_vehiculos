@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:registro_qr_vehiculos/database/db_ayuda.dart';
 void main() {
   runApp(const MyApp());
 }
@@ -56,17 +57,22 @@ class _MyHomePageState extends State<MyHomePage> {
            Expanded(
             flex: 1,
             child: MobileScanner(
-              onDetect: (capture) {
-                final List<Barcode> barcodes = capture.barcodes;
-                if (barcodes.isNotEmpty) {
-                  setState(() {
-                    qrData = barcodes.first.rawValue ?? "QR sin datos";
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Escaneado: $qrData")),
-                  );
-                }
-              },
+              onDetect: (capture) async {
+  final barcodes = capture.barcodes;
+  if (barcodes.isNotEmpty) {
+    final qr = barcodes.first.rawValue ?? "QR vacío";
+
+    await DBAyuda.insertarRegistro(qr);
+
+    setState(() {
+      qrData = qr;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Guardado en BD: $qr")),
+    );
+  }
+},
             ),
           ),
           Expanded(
