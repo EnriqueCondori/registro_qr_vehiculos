@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:registro_qr_vehiculos/database/db_ayuda.dart';
+import 'package:registro_qr_vehiculos/historial.dart';
 
 void main() {
   runApp(const MyApp());
@@ -72,6 +73,15 @@ class _MyHomePageState extends State<MyHomePage> {
               },
             ),
           ),
+           ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => HistorialPage()),
+              );
+            },
+            child: Text("Ver historial"),
+          ),
           Expanded(
             child: Center(
               child: Text(
@@ -80,17 +90,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
           ),
-          Expanded(child: ElevatedButton(
-            onPressed: () async {
-              final registros = await DBAyuda.obtenerRegistros();
-              print("📌 Registros en BD:");
-              for (var r in registros) {
-                print(r);
-              }
-            },
-            child: Text("Ver registros en consola"),
-          ),)
-          
+         
         ],
       ),
     );
