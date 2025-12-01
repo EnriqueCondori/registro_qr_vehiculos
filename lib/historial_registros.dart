@@ -90,12 +90,13 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    subtitle: Text('${item['punto']} - ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.parse(item['fecha']))}'),
+                    subtitle: Text('Punto:${item['punto']} ${item['estado']} - ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(item['fecha']))} '),
                     trailing: IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
                       onPressed: () => eliminarRegistro(item["id"]),
                     ),
                   ),
+                  
                 );
               },
             ),

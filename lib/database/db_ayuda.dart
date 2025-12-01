@@ -35,13 +35,14 @@ class DBAyuda {
   }
 
   // Insertar un registro
-  static Future<int> insertarRegistro(String qr, String punto) async {
+  static Future<int> insertarRegistro(String qr, String punto,String estado) async {
     final dbClient = await db;
 
     return await dbClient.insert("registros", {
       "qr": qr,
       "fecha": DateTime.now().toIso8601String(),
-      "punto":punto
+      "punto":punto,
+      "estado":estado
     });
   }
 
