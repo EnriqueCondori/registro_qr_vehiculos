@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:registro_qr_vehiculos/config/puntos_config.dart';
 
 class DBAyuda {
   static Database? _db;
@@ -25,7 +26,8 @@ class DBAyuda {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             qr TEXT,
             fecha TEXT,
-            punto TEXT
+            punto TEXT,
+            estado TEXT
           )
         """);
       },
@@ -56,27 +58,43 @@ class DBAyuda {
   }
 
   //funcion 
-  static Future<bool> llegoATiempo(
-    String qr,
-    String puntoAnterior,
-    int minutosPermitidos,
-  ) async {
-
+  static Future<String> llegoATiempo(String qrActual, String puntoActual) async {
     final dbClient = await db;
 
+    // Buscar el último registro de ese QR
     final result = await dbClient.query(
       "registros",
-      where: "qr = ? AND punto = ?",
-      whereArgs: [qr, puntoAnterior],
+      where: "qr = ?",
+      whereArgs: [qrActual],
       orderBy: "id DESC",
       limit: 1,
     );
 
-    if (result.isEmpty) return false;
+    // Si no existe un registro previo → es primer punto
+    if (result.isEmpty) {
+      return "Primer registro";
+    }
 
-    DateTime fechaAnterior = DateTime.parse(result[0]["fecha"].toString());
-    Duration diferencia = DateTime.now().difference(fechaAnterior);
+    final ultimo = result[0];
+    String puntoPrevio = ultimo["punto"].toString();
+    DateTime fechaPrevio = DateTime.parse(ultimo["fecha"].toString());
 
-    return diferencia.inMinutes <= minutosPermitidos;
+    // Validar si el punto actual es el siguiente esperado
+    int idxPrev = PuntosConfig.puntosOrden.indexOf(puntoPrevio);
+    int idxActual = PuntosConfig.puntosOrden.indexOf(puntoActual);
+
+    // Si no sigue la secuencia → no se evalúa
+    if (idxActual != idxPrev + 1) {
+      return "Punto fuera de secuencia";
+    }
+
+    // Calcular diferencia de tiempo
+    final diferencia = DateTime.now().difference(fechaPrevio).inMinutes;
+
+    if (diferencia <= PuntosConfig.tiempoPermitidoMinutos) {
+      return "A tiempo";
+    } else {
+      return "Tarde";
+    }
   }
 }
