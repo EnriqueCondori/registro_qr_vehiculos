@@ -24,7 +24,8 @@ class DBAyuda {
           CREATE TABLE registros (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             qr TEXT,
-            fecha TEXT
+            fecha TEXT,
+            punto TEXT
           )
         """);
       },
@@ -32,12 +33,13 @@ class DBAyuda {
   }
 
   // Insertar un registro
-  static Future<int> insertarRegistro(String qr) async {
+  static Future<int> insertarRegistro(String qr, String punto) async {
     final dbClient = await db;
 
     return await dbClient.insert("registros", {
       "qr": qr,
       "fecha": DateTime.now().toIso8601String(),
+      "punto":punto
     });
   }
 
@@ -51,5 +53,30 @@ class DBAyuda {
   static Future<int> eliminarRegistro(int id) async {
     final dbClient = await db;
     return await dbClient.delete("registros", where: "id = ?", whereArgs: [id]);
+  }
+
+  //funcion 
+  static Future<bool> llegoATiempo(
+    String qr,
+    String puntoAnterior,
+    int minutosPermitidos,
+  ) async {
+
+    final dbClient = await db;
+
+    final result = await dbClient.query(
+      "registros",
+      where: "qr = ? AND punto = ?",
+      whereArgs: [qr, puntoAnterior],
+      orderBy: "id DESC",
+      limit: 1,
+    );
+
+    if (result.isEmpty) return false;
+
+    DateTime fechaAnterior = DateTime.parse(result[0]["fecha"].toString());
+    Duration diferencia = DateTime.now().difference(fechaAnterior);
+
+    return diferencia.inMinutes <= minutosPermitidos;
   }
 }

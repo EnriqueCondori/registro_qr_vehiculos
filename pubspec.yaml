@@ -40,6 +40,7 @@ dependencies:
   path: ^1.9.0
   pdf: ^3.10.6
   printing: ^5.12.0
+  intl: ^0.18.1 #para utlizar el dateformat
 
 dev_dependencies:
   flutter_test:

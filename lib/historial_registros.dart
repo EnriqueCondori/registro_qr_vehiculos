@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:registro_qr_vehiculos/database/db_ayuda.dart';
 import 'package:registro_qr_vehiculos/pdf.dart';
+import 'package:intl/intl.dart';
 
 
 class HistorialRegistros extends StatefulWidget {
@@ -89,10 +90,7 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    subtitle: Text(
-                      "Fecha: ${item["fecha"]}",
-                      style: const TextStyle(fontSize: 14),
-                    ),
+                    subtitle: Text('${item['punto']} - ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.parse(item['fecha']))}'),
                     trailing: IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
                       onPressed: () => eliminarRegistro(item["id"]),

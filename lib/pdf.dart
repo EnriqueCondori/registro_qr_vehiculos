@@ -22,13 +22,14 @@ class PDF {
 
               // Tabla de registros
               pw.Table.fromTextArray(
-                headers: ["ID", "QR", "Fecha"],
+                headers: ["ID", "QR", "Fecha","Punto"],
                 data: data
                     .map(
                       (item) => [
                         item["id"].toString(),
                         item["qr"].toString(),
-                        item["fecha"].toString()
+                        item["fecha"].toString(),
+                        item["punto".toString()]
                       ],
                     )
                     .toList(),
