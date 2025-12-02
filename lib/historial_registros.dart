@@ -72,6 +72,12 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
               itemCount: registros.length,
               itemBuilder: (context, index) {
                 final item = registros[index];
+                final Map<String, Color> estadoColorMap = {
+                  "A tiempo": Colors.green,
+                  "Primer registro": Colors.blue,
+                  "Inicio": Colors.cyan,
+                  "Tarde": Colors.red,
+                };
 
                 return Card(
                   color: Colors.white,
@@ -121,13 +127,10 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
                                         "• ${item['estado']}",
                                         style: TextStyle(
                                           fontSize: 15,
-                                          color: item['estado'] == "A tiempo"
-                                              ? Colors.green
-                                              : item['estado'] ==
-                                                    "Primer registro"
-                                              ? Colors.blue
-                                              : Colors
-                                                    .red, // Si no es "A tiempo" ni "Primer registro", se pone rojo
+                                          color:
+                                              estadoColorMap[item['estado']] ??
+                                              Colors
+                                                  .red, // Default to red if no match
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
