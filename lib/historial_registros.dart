@@ -5,7 +5,6 @@ import 'package:registro_qr_vehiculos/database/db_ayuda.dart';
 import 'package:registro_qr_vehiculos/pdf.dart';
 import 'package:intl/intl.dart';
 
-
 class HistorialRegistros extends StatefulWidget {
   const HistorialRegistros({super.key});
 
@@ -69,34 +68,98 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12.0),
               itemCount: registros.length,
               itemBuilder: (context, index) {
                 final item = registros[index];
 
                 return Card(
                   color: Colors.white,
-                  elevation: 4,
-                  shadowColor: Colors.black38,
+                  elevation: 3,
+                  shadowColor: Colors.black26,
                   margin: const EdgeInsets.only(bottom: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: ListTile(
-                    title: Text(
-                      item["qr"],
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Text('Punto:${item['punto']} ${item['estado']} - ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(item['fecha']))} '),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => eliminarRegistro(item["id"]),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Fila para los textos y el ícono de eliminar
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Columna para los textos (a la izquierda)
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // QR en negrita y grande
+                                  Text(
+                                    item["qr"],
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+
+                                  // Punto + Estado
+                                  Row(
+                                    children: [
+                                      Text(
+                                        "Punto: ${item['punto']} ",
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        "• ${item['estado']}",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          color: item['estado'] == "A tiempo"
+                                              ? Colors.green
+                                              : item['estado'] ==
+                                                    "Primer registro"
+                                              ? Colors.blue
+                                              : Colors
+                                                    .red, // Si no es "A tiempo" ni "Primer registro", se pone rojo
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 6),
+
+                                  // Fecha y hora
+                                  Text(
+                                    DateFormat(
+                                      'dd/MM/yyyy  HH:mm',
+                                    ).format(DateTime.parse(item['fecha'])),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Columna para el ícono (a la derecha)
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => eliminarRegistro(item["id"]),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  
                 );
               },
             ),
