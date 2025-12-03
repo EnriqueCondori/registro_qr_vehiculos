@@ -4,9 +4,10 @@ import 'package:registro_qr_vehiculos/database/db_ayuda.dart';
 import 'package:registro_qr_vehiculos/historial_registros.dart';
 
 class ScannerPage extends StatefulWidget {
+  final int idLinea;
   final String punto;
 
-  const ScannerPage({super.key, required this.punto});
+  const ScannerPage({super.key, required this.idLinea,required this.punto});
 
   @override
   State<ScannerPage> createState() => _ScannerPageState();
@@ -44,10 +45,10 @@ class _ScannerPageState extends State<ScannerPage> {
                   final qr = barcodes.first.rawValue ?? "QR vacío";
 
                   // Validación de tiempo
-                  String estado = await DBAyuda.llegoATiempo(qr, widget.punto);
+                  String estado = await DBAyuda.llegoATiempo(qr,widget.punto);
 
                   // Guardar en BD
-                  await DBAyuda.insertarRegistro(qr, widget.punto, estado);
+                  await DBAyuda.insertarRegistro(qr, widget.idLinea,widget.punto, estado);
 
                   setState(() {
                     qrData = "$qr → $estado";

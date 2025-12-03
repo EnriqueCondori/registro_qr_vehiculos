@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:registro_qr_vehiculos/pages/seleccionar_linea.dart';
 import 'package:registro_qr_vehiculos/pages/seleccionar_punto.dart';
 
 void main() {
@@ -14,7 +15,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Registro Vehículos',
       theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
-      home: const SeleccionarPuntoPage(),
+      home: const SeleccionarLineaPage(),
     );
   }
 }

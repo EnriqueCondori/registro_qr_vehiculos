@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -21,11 +23,19 @@ class DBAyuda {
       path,
       version: 1,
       onCreate: (Database db, int version) async {
+        
+        await db.execute('''
+          CREATE TABLE lineas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT UNIQUE
+            );
+        ''');
         await db.execute("""
           CREATE TABLE registros (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             qr TEXT,
             fecha TEXT,
+            id_linea INTEGER,
             punto TEXT,
             estado TEXT
           )
@@ -33,10 +43,21 @@ class DBAyuda {
       },
     );
   }
+  //Crear lineas
+  static Future<int> crearLinea(String nombre) async {
+    final dbClient = await db;
+    return await dbClient.insert('lineas', {'nombre': nombre},
+        conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+  static Future<List<Map<String, dynamic>>> obtenerLineas() async {
+    final dbClient = await db;
+    return await dbClient.query('lineas', orderBy: 'nombre');
+  }
 
   // Insertar un registro
   static Future<int> insertarRegistro(
     String qr,
+    int idLinea,
     String punto,
     String estado,
   ) async {
@@ -45,6 +66,7 @@ class DBAyuda {
     return await dbClient.insert("registros", {
       "qr": qr,
       "fecha": DateTime.now().toIso8601String(),
+      "id_linea": idLinea,
       "punto": punto,
       "estado": estado,
     });
@@ -54,6 +76,13 @@ class DBAyuda {
   static Future<List<Map<String, dynamic>>> obtenerRegistros() async {
     final dbClient = await db;
     return await dbClient.query("registros", orderBy: "id DESC");
+  }
+  //obtener por linea
+  static Future<List<Map<String, dynamic>>> obtenerRegistrosPorLinea(
+      int idLinea) async {
+    final dbClient = await db;
+    return await dbClient.query('registros',
+        where: 'id_linea = ?', whereArgs: [idLinea], orderBy: 'id DESC');
   }
 
   //Eliminar
@@ -120,5 +149,13 @@ class DBAyuda {
 
     // Caso 4: Si el ciclo no sigue la secuencia de A → B → A, marcar como "Punto fuera de secuencia"
     return "Fuera de secuencia";
+  }
+  static Future<Map<String, dynamic>?> obtenerUltimoRegistroQRLinea(
+      String qr, int idLinea) async {
+    final dbClient = await db;
+    final rows = await dbClient.query('registros',
+        where: 'qr = ? AND id_linea = ?', whereArgs: [qr, idLinea], orderBy: 'id DESC', limit: 1);
+    if (rows.isEmpty) return null;
+    return rows.first;
   }
 }

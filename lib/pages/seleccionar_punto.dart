@@ -3,21 +3,25 @@ import 'package:registro_qr_vehiculos/historial_registros.dart';
 import 'scanner_page.dart';
 
 class SeleccionarPuntoPage extends StatelessWidget {
-  const SeleccionarPuntoPage({super.key});
-
+  final int idLinea;
+  final String nombreLinea;
+ const SeleccionarPuntoPage({super.key,
+  required this.idLinea, required this.nombreLinea});
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Seleccionar Punto"),
+        title: Text("Seleccionar Punto 'Linea -${nombreLinea}'",
+        maxLines: 2,
+        style: TextStyle(fontSize: 18),),
       ),
       body: ListView(
         children: [
-          _buildPuntoButton(context, "A"),
-          _buildPuntoButton(context, "B"),
-          // Agrega más puntos si lo necesitas
-          //_buildPuntoButton(context, "C"),
-          ElevatedButton(
+          _buildPuntoButton(context, "A",Colors.green),
+          _buildPuntoButton(context, "B", Colors.amber),
+          SizedBox( height: 20,)
+          ,ElevatedButton(
             onPressed: () {
               Navigator.push(
                 context,
@@ -31,21 +35,23 @@ class SeleccionarPuntoPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPuntoButton(BuildContext context, String punto) {
+  Widget _buildPuntoButton(BuildContext context, String punto, Color color) {
     return Card(
       margin: const EdgeInsets.all(12),
+      color: color,
       child: ListTile(
-        title: Text("Registrar en Punto $punto"),
-        trailing: const Icon(Icons.qr_code_scanner),
+        title: Text("Registrar en Punto $punto",style: TextStyle(color: Colors.white,fontSize: 15),),
+        trailing: const Icon(Icons.qr_code_scanner, color: Colors.white,),
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ScannerPage(punto: punto),
+              builder: (_) => ScannerPage( idLinea: idLinea,punto: punto),
             ),
           );
         },
       ),
+      
     );
   }
 }
