@@ -59,11 +59,13 @@ class _ScannerPageState extends State<ScannerPage> {
                   );
                 }
                 // Rehabilitar el escaneo después de un pequeño delay
-                await Future.delayed(Duration(seconds: 4));
+                await Future.delayed(const Duration(milliseconds: 3500));
                 _isProcesando = false;
               },
             ),
           ),
+          SizedBox(height: 20,)
+          ,
 
           ElevatedButton(
             onPressed: () {

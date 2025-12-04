@@ -1,4 +1,4 @@
-import 'dart:ffi';
+
 
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -78,12 +78,19 @@ class DBAyuda {
     return await dbClient.query("registros", orderBy: "id DESC");
   }
   //obtener por linea
-  static Future<List<Map<String, dynamic>>> obtenerRegistrosPorLinea(
-      int idLinea) async {
-    final dbClient = await db;
-    return await dbClient.query('registros',
-        where: 'id_linea = ?', whereArgs: [idLinea], orderBy: 'id DESC');
-  }
+ static Future<List<Map<String, dynamic>>> obtenerRegistrosConLinea() async {
+  final dbClient = await db;
+
+  final registros = await dbClient.rawQuery("""
+    SELECT r.id, r.qr, r.fecha, r.punto, r.estado,
+           l.nombre AS nombre_linea
+    FROM registros r
+    LEFT JOIN lineas l ON r.id_linea = l.id
+    ORDER BY r.id DESC
+  """);
+
+  return registros;
+}
 
   //Eliminar
   static Future<int> eliminarRegistro(int id) async {
@@ -132,10 +139,11 @@ class DBAyuda {
         puntoPrevio == PuntosConfig.puntosOrden[0]) {
       // Verificar el tiempo desde A a B
       final diferencia = DateTime.now().difference(fechaPrevio).inMinutes;
-
+      
       // Si la diferencia es mayor que 15 minutos, devuelve "Tarde"
       if (diferencia > PuntosConfig.tiempoPermitidoMinutos) {
-        return "Tarde";
+        final retardo=diferencia-PuntosConfig.tiempoPermitidoMinutos;
+        return "Tarde - $retardo minutos";
       } else {
         return "A tiempo";
       }

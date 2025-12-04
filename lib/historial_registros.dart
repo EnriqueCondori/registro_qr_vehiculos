@@ -23,7 +23,7 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
   }
 
   Future<void> cargarRegistros() async {
-    final datos = await DBAyuda.obtenerRegistros();
+    final datos = await DBAyuda.obtenerRegistrosConLinea();
     setState(() {
       registros = datos;
       cargando = false;
@@ -39,11 +39,18 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
     ).showSnackBar(const SnackBar(content: Text("Registro eliminado")));
   }
 
+  // Función para calcular la diferencia en minutos
+  String calcularDiferencia(DateTime fechaPrevio) {
+    final ahora = DateTime.now();
+    final diferencia = ahora.difference(fechaPrevio).inMinutes;
+    return diferencia.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Historial de QR Escaneados"),
+        title: const Text("Historial"),
         backgroundColor: Colors.deepOrangeAccent,
         actions: [
           IconButton(
@@ -78,7 +85,6 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
                   "Inicio": Colors.cyan,
                   "Tarde": Colors.red,
                 };
-
                 return Card(
                   color: Colors.white,
                   elevation: 3,
@@ -111,18 +117,26 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
                                     ),
                                   ),
                                   const SizedBox(height: 6),
+                                  Text(
+                                    "Linea: ${item['nombre_linea']}",
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
 
-                                  // Punto + Estado
+                                  // Punto
+                                  Text(
+                                    "Punto: ${item['punto']} ",
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  //Estado
                                   Row(
                                     children: [
-                                      Text(
-                                        "Punto: ${item['punto']} ",
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
                                       Text(
                                         "• ${item['estado']}",
                                         style: TextStyle(
@@ -134,6 +148,9 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
+
+                                      const SizedBox(height: 6),
+                                     
                                     ],
                                   ),
 
@@ -155,7 +172,11 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
 
                             // Columna para el ícono (a la derecha)
                             IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
+                              icon: const Icon(
+                                Icons.delete,
+                                color: Colors.red,
+                                size: 30,
+                              ),
                               onPressed: () => eliminarRegistro(item["id"]),
                             ),
                           ],
