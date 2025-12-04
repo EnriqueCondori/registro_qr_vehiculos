@@ -30,6 +30,12 @@ class DBAyuda {
             nombre TEXT UNIQUE
             );
         ''');
+        // Insertar líneas iniciales
+        await db.insert("lineas", {"nombre": "30"});
+        await db.insert("lineas", {"nombre": "9"});
+        await db.insert("lineas", {"nombre": "158"});
+        await db.insert("lineas", {"nombre": "31"});
+
         await db.execute("""
           CREATE TABLE registros (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,14 +50,20 @@ class DBAyuda {
     );
   }
   //Crear lineas
-  static Future<int> crearLinea(String nombre) async {
-    final dbClient = await db;
-    return await dbClient.insert('lineas', {'nombre': nombre},
-        conflictAlgorithm: ConflictAlgorithm.ignore);
-  }
+  // static Future<int> crearLinea(String nombre) async {
+  //   final dbClient = await db;
+  //   return await dbClient.insert('lineas', {'nombre': nombre},
+  //       conflictAlgorithm: ConflictAlgorithm.ignore);
+  // }
+
+
+
+
+
+
   static Future<List<Map<String, dynamic>>> obtenerLineas() async {
     final dbClient = await db;
-    return await dbClient.query('lineas', orderBy: 'nombre');
+    return await dbClient.query('lineas', orderBy: 'id');
   }
 
   // Insertar un registro
@@ -62,6 +74,8 @@ class DBAyuda {
     String estado,
   ) async {
     final dbClient = await db;
+    print("...................");
+    print("Id LINEA $idLinea");
 
     return await dbClient.insert("registros", {
       "qr": qr,
@@ -88,6 +102,7 @@ class DBAyuda {
     LEFT JOIN lineas l ON r.id_linea = l.id
     ORDER BY r.id DESC
   """);
+  print("Registro $registros");
 
   return registros;
 }
@@ -163,7 +178,6 @@ class DBAyuda {
     final dbClient = await db;
     final rows = await dbClient.query('registros',
         where: 'qr = ? AND id_linea = ?', whereArgs: [qr, idLinea], orderBy: 'id DESC', limit: 1);
-    if (rows.isEmpty) return null;
-    return rows.first;
+    return rows.isEmpty ? null : rows.first;
   }
 }

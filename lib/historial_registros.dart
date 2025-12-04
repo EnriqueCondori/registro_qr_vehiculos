@@ -118,7 +118,7 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    "Linea: ${item['nombre_linea']}",
+                                    "Linea: ${item["nombre_linea"]}",
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w500,
