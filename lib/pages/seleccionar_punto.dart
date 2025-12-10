@@ -46,7 +46,7 @@ class SeleccionarPuntoPage extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ScannerPage( idLinea: idLinea,punto: punto),
+              builder: (_) => ScannerPage( idLinea: idLinea,punto: punto,nombreLinea: nombreLinea),
             ),
           );
         },

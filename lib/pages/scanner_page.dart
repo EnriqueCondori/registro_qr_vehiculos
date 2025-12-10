@@ -6,8 +6,14 @@ import 'package:registro_qr_vehiculos/historial_registros.dart';
 class ScannerPage extends StatefulWidget {
   final int idLinea;
   final String punto;
+  final String nombreLinea;
 
-  const ScannerPage({super.key, required this.idLinea,required this.punto});
+  const ScannerPage({
+    super.key,
+    required this.idLinea,
+    required this.punto,
+    required this.nombreLinea,
+  });
 
   @override
   State<ScannerPage> createState() => _ScannerPageState();
@@ -21,9 +27,7 @@ class _ScannerPageState extends State<ScannerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Escanear • Punto ${widget.punto}"),
-      ),
+      appBar: AppBar(title: Text("Escanear • Punto ${widget.punto}")),
       body: Column(
         children: [
           Expanded(
@@ -40,23 +44,34 @@ class _ScannerPageState extends State<ScannerPage> {
                 _isProcesando = true;
                 _lastScanTime = ahora;
                 final barcodes = capture.barcodes;
-                
+
                 if (barcodes.isNotEmpty) {
                   final qr = barcodes.first.rawValue ?? "QR vacío";
 
                   // Validación de tiempo
-                  String estado = await DBAyuda.llegoATiempo(qr,widget.punto);
+                  String estado = await DBAyuda.llegoATiempo(
+                    qr,
+                    widget.punto,
+                    widget.idLinea,
+                  );
+                  
 
                   // Guardar en BD
-                  await DBAyuda.insertarRegistro(qr, widget.idLinea,widget.punto, estado);
+                  await DBAyuda.insertarRegistro(
+                    qr,
+                    widget.idLinea,
+                    widget.punto,
+                  );
+
+                 
 
                   setState(() {
                     qrData = "$qr → $estado";
                   });
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Estado: $estado")),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text("Estado: $estado")));
                 }
                 // Rehabilitar el escaneo después de un pequeño delay
                 await Future.delayed(const Duration(milliseconds: 3500));
@@ -64,8 +79,7 @@ class _ScannerPageState extends State<ScannerPage> {
               },
             ),
           ),
-          SizedBox(height: 20,)
-          ,
+          SizedBox(height: 20),
 
           ElevatedButton(
             onPressed: () {
@@ -85,7 +99,7 @@ class _ScannerPageState extends State<ScannerPage> {
                 textAlign: TextAlign.center,
               ),
             ),
-          )
+          ),
         ],
       ),
     );

@@ -48,6 +48,12 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
 
   @override
   Widget build(BuildContext context) {
+    final Map<String, Color> estadoColorMap = {
+      "A tiempo": Colors.green,
+      "Primer registro": Colors.blue,
+      "Inicio": Colors.cyan,
+      "Tarde": Colors.red,
+    };
     return Scaffold(
       appBar: AppBar(
         title: const Text("Historial"),
@@ -79,12 +85,7 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
               itemCount: registros.length,
               itemBuilder: (context, index) {
                 final item = registros[index];
-                final Map<String, Color> estadoColorMap = {
-                  "A tiempo": Colors.green,
-                  "Primer registro": Colors.blue,
-                  "Inicio": Colors.cyan,
-                  "Tarde": Colors.red,
-                };
+
                 return Card(
                   color: Colors.white,
                   elevation: 3,
@@ -150,7 +151,6 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
                                       ),
 
                                       const SizedBox(height: 6),
-                                     
                                     ],
                                   ),
 
