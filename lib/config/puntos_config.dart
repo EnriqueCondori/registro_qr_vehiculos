@@ -4,4 +4,5 @@ class PuntosConfig {
 
   // Secuencia de puntos válidos del recorrido
   static const List<String> puntosOrden = ["A", "B"];
+  
 }

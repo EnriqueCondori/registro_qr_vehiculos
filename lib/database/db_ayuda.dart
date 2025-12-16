@@ -43,10 +43,163 @@ class DBAyuda {
             estado TEXT
           )
         """);
+        await db.execute("""
+      CREATE TABLE IF NOT EXISTS puntos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_linea INTEGER,
+        nombre TEXT,
+        orden INTEGER
+      );
+    """);
+
+        await db.execute("""
+      CREATE TABLE IF NOT EXISTS tiempos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_origen INTEGER,
+        id_destino INTEGER,
+        minutos INTEGER
+      );
+    """);
       },
     );
   }
+
   //Crear lineas
+  // ----------------------- PUNTOS -----------------------
+  static Future<int> crearPunto(int idLinea, String nombre, int orden) async {
+    final dbClient = await db;
+    return await dbClient.insert('puntos', {
+      'id_linea': idLinea,
+      'nombre': nombre,
+      'orden': orden,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  static Future<List<Map<String, dynamic>>> obtenerPuntosPorLinea(
+    int idLinea,
+  ) async {
+    final dbClient = await db;
+    final rows = await dbClient.query(
+      'puntos',
+      where: 'id_linea = ?',
+      whereArgs: [idLinea],
+      orderBy: 'orden ASC',
+    );
+    return rows;
+  }
+
+ static Future<int> editarPunto(int idPunto, String nombre) async {
+  final dbClient = await db;
+  return await dbClient.update(
+    'puntos',
+    {'nombre': nombre},
+    where: 'id = ?',
+    whereArgs: [idPunto],
+  );
+}
+
+  static Future<int> actualizarOrdenPuntos(
+    List<Map<String, dynamic>> puntos,
+  ) async {
+    final dbClient = await db;
+    final batch = dbClient.batch();
+    for (var p in puntos) {
+      batch.update(
+        'puntos',
+        {'orden': p['orden']},
+        where: 'id = ?',
+        whereArgs: [p['id']],
+      );
+    }
+    await batch.commit(noResult: true);
+    return 1;
+  }
+
+  static Future<int> eliminarPunto(int idPunto) async {
+    final dbClient = await db;
+    // eliminar tiempos relacionados
+    await dbClient.delete(
+      'tiempos',
+      where: 'id_origen = ? OR id_destino = ?',
+      whereArgs: [idPunto, idPunto],
+    );
+    return await dbClient.delete(
+      'puntos',
+      where: 'id = ?',
+      whereArgs: [idPunto],
+    );
+  }
+
+  // ----------------------- TIEMPOS -----------------------
+  static Future<int> crearOActualizarTiempo(
+    int idOrigen,
+    int idDestino,
+    int minutos,
+  ) async {
+    final dbClient = await db;
+    // si ya existe, actualizar; si no, insertar
+    final rows = await dbClient.query(
+      'tiempos',
+      where: 'id_origen = ? AND id_destino = ?',
+      whereArgs: [idOrigen, idDestino],
+      limit: 1,
+    );
+
+    if (rows.isEmpty) {
+      return await dbClient.insert('tiempos', {
+        'id_origen': idOrigen,
+        'id_destino': idDestino,
+        'minutos': minutos,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    } else {
+      return await dbClient.update(
+        'tiempos',
+        {'minutos': minutos},
+        where: 'id_origen = ? AND id_destino = ?',
+        whereArgs: [idOrigen, idDestino],
+      );
+    }
+  }
+
+  static Future<int?> obtenerTiempoEntrePuntos(
+    int idOrigen,
+    int idDestino,
+  ) async {
+    final dbClient = await db;
+    final rows = await dbClient.query(
+      'tiempos',
+      where: 'id_origen = ? AND id_destino = ?',
+      whereArgs: [idOrigen, idDestino],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['minutos'] as int;
+  }
+
+  static Future<List<Map<String, dynamic>>> obtenerTiemposPorLinea(
+    int idLinea,
+  ) async {
+    // Devuelve los tiempos para tramos entre puntos de la misma línea
+    final dbClient = await db;
+    final puntos = await obtenerPuntosPorLinea(idLinea);
+    if (puntos.isEmpty) return [];
+
+    // construir lista de ids de puntos de la linea
+    final ids = puntos.map((p) => p['id']).toList();
+    final placeholders = List.filled(ids.length, '?').join(', ');
+    final rows = await dbClient.rawQuery(
+      '''
+    SELECT t.id, t.id_origen, t.id_destino, t.minutos,
+           po.nombre AS origen_nombre, pd.nombre AS destino_nombre
+    FROM tiempos t
+    LEFT JOIN puntos po ON t.id_origen = po.id
+    LEFT JOIN puntos pd ON t.id_destino = pd.id
+    WHERE t.id_origen IN ($placeholders) AND t.id_destino IN ($placeholders)
+  ''',
+      [...ids, ...ids],
+    );
+    return rows;
+  }
 
   static Future<List<Map<String, dynamic>>> obtenerLineas() async {
     final dbClient = await db;
@@ -58,15 +211,16 @@ class DBAyuda {
     String qr,
     int idLinea,
     String punto,
-    //String estado,
   ) async {
     final dbClient = await db;
     //Validar que el registro cumple con la secuencia antes de insertarlo
     final resultado = await llegoATiempo(qr, punto, idLinea);
-    if (resultado == "Debe iniciar en el Punto A" || resultado =="Fuera de secuencia"||resultado=="Ya marco en A" || resultado== "Línea incorrecta — Última línea registrada%") {
+    if (resultado == "Debe iniciar en el Punto A" ||
+        resultado == "Fuera de secuencia" ||
+        resultado == "Ya marco en A" ||
+        resultado == "Línea incorrecta — Última línea registrada%") {
       return -1; // Indica que no se pudo registrar porque no sigue la secuencia
     }
-    
 
     return await dbClient.insert("registros", {
       "qr": qr,
@@ -94,7 +248,7 @@ class DBAyuda {
     LEFT JOIN lineas l ON r.id_linea = l.id
     ORDER BY r.id DESC
   """);
-   
+
     return registros;
   }
 
