@@ -5,14 +5,14 @@ import 'package:registro_qr_vehiculos/historial_registros.dart';
 
 class ScannerPage extends StatefulWidget {
   final int idLinea;
-  final String punto;
-  final String nombreLinea;
+  final int puntoId;
+  final String nombrePunto;
 
   const ScannerPage({
     super.key,
     required this.idLinea,
-    required this.punto,
-    required this.nombreLinea,
+    required this.puntoId,
+    required this.nombrePunto,
   });
 
   @override
@@ -27,7 +27,7 @@ class _ScannerPageState extends State<ScannerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Escanear • Punto ${widget.punto}")),
+      appBar: AppBar(title: Text("Escanear • Punto ${widget.nombrePunto}")),
       body: Column(
         children: [
           Expanded(
@@ -48,22 +48,33 @@ class _ScannerPageState extends State<ScannerPage> {
                 if (barcodes.isNotEmpty) {
                   final qr = barcodes.first.rawValue ?? "QR vacío";
 
-                  // Validación de tiempo
-                  String estado = await DBAyuda.llegoATiempo(
-                    qr,
-                    widget.punto,
-                    widget.idLinea,
+                  // 🔥 VALIDAR ESTADO DINÁMICO
+                  final estado = await DBAyuda.validarRegistroPorPunto(
+                    qr: qr,
+                    idLinea: widget.idLinea,
+                    idPuntoActual: widget.puntoId,
                   );
-                  
 
-                  // Guardar en BD
+                  // ❌ Si no es válido → NO GUARDAR
+                  if (estado.contains("Debe") ||
+                      estado.contains("incorrecta") ||
+                      estado.contains("no configurado") ||
+                      estado.contains("Fuera")) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text("❌ $estado")));
+
+                    _isProcesando = false;
+                    return;
+                  }
+
+                  // ✅ GUARDAR
                   await DBAyuda.insertarRegistro(
                     qr,
                     widget.idLinea,
-                    widget.punto,
+                    widget.puntoId,
+                    estado,
                   );
-
-                 
 
                   setState(() {
                     qrData = "$qr → $estado";
@@ -71,10 +82,10 @@ class _ScannerPageState extends State<ScannerPage> {
 
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(SnackBar(content: Text("Estado: $estado")));
+                  ).showSnackBar(SnackBar(content: Text("✅ $estado")));
                 }
-                // Rehabilitar el escaneo después de un pequeño delay
-                await Future.delayed(const Duration(milliseconds: 3500));
+
+                await Future.delayed(const Duration(seconds: 3));
                 _isProcesando = false;
               },
             ),

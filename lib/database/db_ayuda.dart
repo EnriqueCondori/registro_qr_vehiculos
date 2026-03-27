@@ -1,3 +1,4 @@
+import 'package:registro_qr_vehiculos/config/punto.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -19,7 +20,7 @@ class DBAyuda {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (Database db, int version) async {
         await db.execute('''
           CREATE TABLE lineas (
@@ -34,23 +35,25 @@ class DBAyuda {
         await db.insert("lineas", {"nombre": "31"});
 
         await db.execute("""
-          CREATE TABLE registros (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            qr TEXT,
-            fecha TEXT,
-            id_linea INTEGER,
-            punto TEXT,
-            estado TEXT
-          )
-        """);
-        await db.execute("""
-      CREATE TABLE IF NOT EXISTS puntos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_linea INTEGER,
-        nombre TEXT,
-        orden INTEGER
-      );
-    """);
+        CREATE TABLE registros (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          qr TEXT,
+          fecha TEXT,
+          id_linea INTEGER,
+          id_punto INTEGER,
+          estado TEXT
+        )
+      """);
+
+      await db.execute("""
+        CREATE TABLE puntos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          id_linea INTEGER,
+          nombre TEXT,
+          orden INTEGER,
+          tiempo_hasta_siguiente INTEGER
+        )
+      """);
 
         await db.execute("""
       CREATE TABLE IF NOT EXISTS tiempos (
@@ -60,6 +63,15 @@ class DBAyuda {
         minutos INTEGER
       );
     """);
+        await db.execute("""
+      CREATE TABLE tiempos_tramo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_linea INTEGER,
+        punto_origen_id INTEGER,
+        punto_destino_id INTEGER,
+        minutos INTEGER
+      )
+      """);
       },
     );
   }
@@ -75,28 +87,33 @@ class DBAyuda {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  static Future<int> insertarPunto(Punto punto) async {
+    final dbClient = await db;
+    return await dbClient.insert("puntos", punto.toMap());
+  }
+
+  // Obtener puntos por línea
   static Future<List<Map<String, dynamic>>> obtenerPuntosPorLinea(
     int idLinea,
   ) async {
     final dbClient = await db;
-    final rows = await dbClient.query(
-      'puntos',
-      where: 'id_linea = ?',
+    return await dbClient.query(
+      "puntos",
+      where: "id_linea = ?",
       whereArgs: [idLinea],
-      orderBy: 'orden ASC',
+      orderBy: "orden ASC",
     );
-    return rows;
   }
 
- static Future<int> editarPunto(int idPunto, String nombre) async {
-  final dbClient = await db;
-  return await dbClient.update(
-    'puntos',
-    {'nombre': nombre},
-    where: 'id = ?',
-    whereArgs: [idPunto],
-  );
-}
+  static Future<int> editarPunto(int idPunto, String nombre) async {
+    final dbClient = await db;
+    return await dbClient.update(
+      'puntos',
+      {'nombre': nombre},
+      where: 'id = ?',
+      whereArgs: [idPunto],
+    );
+  }
 
   static Future<int> actualizarOrdenPuntos(
     List<Map<String, dynamic>> puntos,
@@ -176,6 +193,56 @@ class DBAyuda {
     return rows.first['minutos'] as int;
   }
 
+  //Tiempo
+  static Future<int?> obtenerTiempoTramo(
+    int idLinea,
+    int puntoOrigenId,
+    int puntoDestinoId,
+  ) async {
+    final dbClient = await db;
+
+    final res = await dbClient.query(
+      'tiempos_tramo',
+      where: 'id_linea = ? AND punto_origen_id = ? AND punto_destino_id = ?',
+      whereArgs: [idLinea, puntoOrigenId, puntoDestinoId],
+      limit: 1,
+    );
+
+    if (res.isEmpty) return null;
+    return res.first['minutos'] as int;
+  }
+
+  static Future<void> guardarTiempoTramo(
+    int idLinea,
+    int origenId,
+    int destinoId,
+    int minutos,
+  ) async {
+    final dbClient = await db;
+
+    final existe = await dbClient.query(
+      'tiempos_tramo',
+      where: 'id_linea = ? AND punto_origen_id = ? AND punto_destino_id = ?',
+      whereArgs: [idLinea, origenId, destinoId],
+    );
+
+    if (existe.isEmpty) {
+      await dbClient.insert('tiempos_tramo', {
+        'id_linea': idLinea,
+        'punto_origen_id': origenId,
+        'punto_destino_id': destinoId,
+        'minutos': minutos,
+      });
+    } else {
+      await dbClient.update(
+        'tiempos_tramo',
+        {'minutos': minutos},
+        where: 'id_linea = ? AND punto_origen_id = ? AND punto_destino_id = ?',
+        whereArgs: [idLinea, origenId, destinoId],
+      );
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> obtenerTiemposPorLinea(
     int idLinea,
   ) async {
@@ -207,29 +274,22 @@ class DBAyuda {
   }
 
   // Insertar un registro
-  static Future<int> insertarRegistro(
-    String qr,
-    int idLinea,
-    String punto,
-  ) async {
-    final dbClient = await db;
-    //Validar que el registro cumple con la secuencia antes de insertarlo
-    final resultado = await llegoATiempo(qr, punto, idLinea);
-    if (resultado == "Debe iniciar en el Punto A" ||
-        resultado == "Fuera de secuencia" ||
-        resultado == "Ya marco en A" ||
-        resultado == "Línea incorrecta — Última línea registrada%") {
-      return -1; // Indica que no se pudo registrar porque no sigue la secuencia
-    }
+ static Future<int> insertarRegistro(
+  String qr,
+  int idLinea,
+  int idPunto,
+  String estado,
+) async {
+  final dbClient = await db;
 
-    return await dbClient.insert("registros", {
-      "qr": qr,
-      "fecha": DateTime.now().toIso8601String(),
-      "id_linea": idLinea,
-      "punto": punto,
-      "estado": resultado,
-    });
-  }
+  return await dbClient.insert("registros", {
+    "qr": qr,
+    "fecha": DateTime.now().toIso8601String(),
+    "id_linea": idLinea,
+    "id_punto": idPunto,
+    "estado": estado,
+  });
+}
 
   // Obtener todos los registros
   static Future<List<Map<String, dynamic>>> obtenerRegistros() async {
@@ -239,18 +299,18 @@ class DBAyuda {
 
   //obtener por linea
   static Future<List<Map<String, dynamic>>> obtenerRegistrosConLinea() async {
-    final dbClient = await db;
+  final dbClient = await db;
 
-    final registros = await dbClient.rawQuery("""
-    SELECT r.id, r.qr, r.fecha, r.punto, r.estado,
-           l.nombre AS nombre_linea
+  return await dbClient.rawQuery("""
+    SELECT r.id, r.qr, r.fecha, r.estado,
+           l.nombre AS nombre_linea,
+           p.nombre AS nombre_punto
     FROM registros r
     LEFT JOIN lineas l ON r.id_linea = l.id
+    LEFT JOIN puntos p ON r.id_punto = p.id
     ORDER BY r.id DESC
   """);
-
-    return registros;
-  }
+}
 
   //Eliminar
   static Future<int> eliminarRegistro(int id) async {
@@ -259,78 +319,159 @@ class DBAyuda {
   }
 
   //funcion
-  static Future<String> llegoATiempo(
-    String qrActual,
-    String puntoActual,
-    int idLineaActual,
-  ) async {
-    final dbClient = await db;
+  // static Future<String> llegoATiempo(
+  //   String qrActual,
+  //   int puntoActualId,
+  //   int idLineaActual,
+  // ) async {
+  //   final dbClient = await db;
 
-    // Buscar el último registro de ese QR
-    final result = await dbClient.query(
-      "registros",
-      where: "qr = ?",
-      whereArgs: [qrActual],
-      orderBy: "id DESC",
-      limit: 1,
-    );
+  //   // Buscar el último registro de ese QR
+  //   final result = await dbClient.query(
+  //     "registros",
+  //     where: "qr = ?",
+  //     whereArgs: [qrActual],
+  //     orderBy: "id DESC",
+  //     limit: 1,
+  //   );
 
-    // Si no existe un registro previo → es primer punto (debe ser A)
-    // if (result.isEmpty && puntoActual == PuntosConfig.puntosOrden[0]) {
-    //   return "Primer registro"; // Solo se puede registrar el primer punto en A
-    // }
+  //   // Obtener puntos de la línea actual
+  //   final puntosLinea = await dbClient.query(
+  //     'puntos',
+  //     where: 'id_linea = ?',
+  //     whereArgs: [idLineaActual],
+  //     orderBy: 'orden ASC',
+  //   );
 
-    // Si el último registro existe, obtenemos el punto y la fecha
-    //final ultimo = result.isNotEmpty ? result[0] : null;
-    // Si no existe registro previo → solo permitir punto A
-    if (result.isEmpty) {
-      if (puntoActual == PuntosConfig.puntosOrden[0]) {
-        return "Primer registro";
-      }
-      return "Debe iniciar en el Punto A";
-    }
-    //
-    final ultimo = result.first;
+  //   // Validar que la línea tenga puntos
+  //   if (puntosLinea.isEmpty) {
+  //     return "Línea sin puntos configurados";
+  //   }
 
-    int ultimaLinea = ultimo["id_linea"] as int;
+  //   // Primer punto dinámico (A)
+  //   final primerPunto = puntosLinea.first['nombre'] as String;
 
-    if (ultimaLinea != idLineaActual) {
-      return "Línea incorrecta — Última línea registrada: $ultimaLinea";
-    }
+  //   // Si no hay registros previos
+  //   if (result.isEmpty) {
+  //     if (puntoActualId == primerPunto) {
+  //       return "Primer registro";
+  //     }
+  //     return "Debe iniciar en $primerPunto";
+  //   }
 
-    String puntoPrevio = ultimo["punto"].toString();
-    DateTime fechaPrevio = DateTime.parse(ultimo["fecha"].toString());
+  //   final ultimo = result.first;
 
-    // Caso 1: Si el último registro fue en A y el punto actual es A → marcar como fuera de secuencia.
-    if (puntoActual == PuntosConfig.puntosOrden[0] &&
-        puntoPrevio == PuntosConfig.puntosOrden[0]) {
-      return "Ya marco en A"; // No puedes marcar en A sin haber pasado por B primero
-    }
+  //   int ultimaLinea = ultimo["id_linea"] as int;
 
-    // Caso 2: Si el último registro fue en A y el punto actual es B, verificar el tiempo de A a B.
-    if (puntoActual == PuntosConfig.puntosOrden[1] &&
-        puntoPrevio == PuntosConfig.puntosOrden[0]) {
-      // Verificar el tiempo desde A a B
-      final diferencia = DateTime.now().difference(fechaPrevio).inMinutes;
+  //   if (ultimaLinea != idLineaActual) {
+  //     return "Línea incorrecta — Última línea registrada: $ultimaLinea";
+  //   }
 
-      // Si la diferencia es mayor que 15 minutos, devuelve "Tarde"
-      if (diferencia > PuntosConfig.tiempoPermitidoMinutos) {
-        final retardo = diferencia - PuntosConfig.tiempoPermitidoMinutos;
-        return "Tarde - $retardo minutos";
-      } else {
-        return "A tiempo";
-      }
-    }
+  //   int puntoPrevioId = ultimo["punto_id"] as int;
+  //   DateTime fechaPrevio = DateTime.parse(ultimo["fecha"].toString());
+  //   // Buscar los puntos de la línea actual
+  //   final puntos = await dbClient.query(
+  //     'puntos',
+  //     where: 'id_linea = ?',
+  //     whereArgs: [idLineaActual],
+  //     orderBy: 'orden ASC',
+  //   );
+  //   // Buscar ID de los puntos origen y destino
+  //   final puntoOrigen = puntos.firstWhere(
+  //     (p) => p['id'] == puntoPrevioId,
+  //     orElse: () => throw Exception("Punto de origen no encontrado"),
+  //   );
+  //   final puntoDestino = puntos.firstWhere(
+  //     (p) => p['id'] == puntoActualId,
+  //     orElse: () => throw Exception("Punto de destino no encontrado"),
+  //   );
+  //   // Obtener el tiempo configurado entre estos dos puntos
+  //   final tiempoPermitido = await obtenerTiempoTramo(
+  //     idLineaActual,
+  //     puntoOrigen['id'] as int,
+  //     puntoDestino['id'] as int,
+  //   );
 
-    // Caso 3: Si el último registro fue en B y el punto actual es A, reiniciar ciclo.
-    if (puntoActual == PuntosConfig.puntosOrden[0] &&
-        puntoPrevio == PuntosConfig.puntosOrden[1]) {
-      return "Inicio"; // El ciclo A → B → A se ha completado, reinicia con "Inicio"
-    }
+  //   if (tiempoPermitido == null) {
+  //     return "Tiempo no configurado";
+  //   }
 
-    // Caso 4: Si el ciclo no sigue la secuencia de A → B → A, marcar como "Punto fuera de secuencia"
+  //   // Calcular la diferencia de tiempo
+  //   final diferencia = DateTime.now().difference(fechaPrevio).inMinutes;
+
+  //   // Verificar si llegó tarde
+  //   if (diferencia > tiempoPermitido) {
+  //     return "Tarde - ${diferencia - tiempoPermitido} min";
+  //   }
+
+  //   // Si está dentro del tiempo permitido
+  //   return "A tiempo";
+  // }
+
+  static Future<String> validarRegistroPorPunto({
+  required String qr,
+  required int idLinea,
+  required int idPuntoActual,
+}) async {
+  final dbClient = await db;
+
+  final puntos = await dbClient.query(
+    'puntos',
+    where: 'id_linea = ?',
+    whereArgs: [idLinea],
+    orderBy: 'orden ASC',
+  );
+
+  if (puntos.isEmpty) {
+    return "No hay puntos configurados";
+  }
+
+  final puntoActual = puntos.firstWhere(
+    (p) => p['id'] == idPuntoActual,
+  );
+
+  final indexActual = puntos.indexOf(puntoActual);
+
+  final result = await dbClient.query(
+    'registros',
+    where: 'qr = ? AND id_linea = ?',
+    whereArgs: [qr, idLinea],
+    orderBy: 'id DESC',
+    limit: 1,
+  );
+
+  // 🟢 PRIMER REGISTRO
+  if (result.isEmpty) {
+    if (indexActual == 0) return "Primer registro";
+    return "Debe iniciar en ${puntos.first['nombre']}";
+  }
+
+  final ultimo = result.first;
+
+  final idPuntoPrevio = ultimo['id_punto'] as int;
+  final fechaPrevio = DateTime.parse((ultimo['fecha']?? '').toString());
+
+  final puntoPrevio = puntos.firstWhere((p) => p['id'] == idPuntoPrevio);
+  final indexPrevio = puntos.indexOf(puntoPrevio);
+
+  // 🔴 SECUENCIA
+  if (indexActual != indexPrevio + 1) {
     return "Fuera de secuencia";
   }
+
+  // 🟡 TIEMPO
+  final tiempoPermitido =
+      (puntoPrevio['tiempo_hasta_siguiente'] ?? 0) as int;
+
+  final diferencia =
+      DateTime.now().difference(fechaPrevio).inMinutes;
+
+  if (diferencia > tiempoPermitido) {
+    return "Tarde - ${diferencia - tiempoPermitido} min";
+  }
+
+  return "A tiempo";
+}
 
   static Future<Map<String, dynamic>?> obtenerUltimoRegistroQRLinea(
     String qr,

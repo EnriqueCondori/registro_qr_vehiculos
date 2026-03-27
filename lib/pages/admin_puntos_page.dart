@@ -1,173 +1,122 @@
 
 import 'package:flutter/material.dart';
+import 'package:registro_qr_vehiculos/config/punto.dart';
 import 'package:registro_qr_vehiculos/database/db_ayuda.dart';
 
-class AdminPuntosPage extends StatefulWidget {
-  final int idLinea;
-  final String nombreLinea;
-
-  const AdminPuntosPage({
-    super.key,
-    required this.idLinea,
-    required this.nombreLinea,
-  });
+class AdministrarPuntosPage extends StatefulWidget {
+  const AdministrarPuntosPage({super.key});
 
   @override
-  State<AdminPuntosPage> createState() => _AdminPuntosPageState();
+  State<AdministrarPuntosPage> createState() => _AdministrarPuntosPageState();
 }
 
-class _AdminPuntosPageState extends State<AdminPuntosPage> {
+class _AdministrarPuntosPageState extends State<AdministrarPuntosPage> {
+  int? idLineaSeleccionada;
   List<Map<String, dynamic>> puntos = [];
-  bool cargando = true;
 
-  @override
-  void initState() {
-    super.initState();
-    cargarPuntos();
-  }
-
-  Future<void> cargarPuntos() async {
-    final data = await DBAyuda.obtenerPuntosPorLinea(widget.idLinea);
-    setState(() {
-      puntos = List<Map<String, dynamic>>.from(data);
-      cargando = false;
-    });
-  }
-
-  // ---------------- AGREGAR PUNTO ----------------
-  Future<void> agregarPunto() async {
-    String nombre = '';
-
-    await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Nuevo punto'),
-        content: TextField(
-          decoration: const InputDecoration(labelText: 'Nombre del punto'),
-          onChanged: (v) => nombre = v,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () async {
-              if (nombre.trim().isEmpty) return;
-
-              await DBAyuda.crearPunto(
-                widget.idLinea,
-                nombre.trim(),
-                puntos.length,
-              );
-
-              Navigator.pop(context);
-              cargarPuntos();
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------------- EDITAR ----------------
-  Future<void> editarPunto(Map<String, dynamic> punto) async {
-    String nombre = punto['nombre'];
-
-    await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Editar punto'),
-        content: TextField(
-          controller: TextEditingController(text: nombre),
-          onChanged: (v) => nombre = v,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () async {
-              await DBAyuda.editarPunto(punto['id'], nombre.trim());
-              Navigator.pop(context);
-              cargarPuntos();
-            },
-            child: const Text('Actualizar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------------- ELIMINAR ----------------
-  Future<void> eliminarPunto(int idPunto) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Confirmar'),
-        content: const Text('¿Eliminar este punto?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sí')),
-        ],
-      ),
-    );
-
-    if (ok == true) {
-      await DBAyuda.eliminarPunto(idPunto);
-      cargarPuntos();
-    }
-  }
-
-  // ---------------- REORDENAR ----------------
-  Future<void> reordenar(int oldIndex, int newIndex) async {
-    if (newIndex > oldIndex) newIndex--;
-
-    final item = puntos.removeAt(oldIndex);
-    puntos.insert(newIndex, item);
-
-    await DBAyuda.actualizarOrdenPuntos(puntos);
-    setState(() {});
-  }
-
-  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Puntos • Línea ${widget.nombreLinea}'),
+      appBar: AppBar(title: const Text("Administrar Puntos")),
+      floatingActionButton: idLineaSeleccionada == null
+          ? null
+          : FloatingActionButton(
+              onPressed: () => mostrarFormulario(),
+              child: const Icon(Icons.add),
+            ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _selectorLinea(),
+            const SizedBox(height: 16),
+            Expanded(child: _listaPuntos()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _selectorLinea() {
+    return DropdownButtonFormField<int>(
+      hint: const Text("Seleccionar línea"),
+      value: idLineaSeleccionada,
+      items: const [
+        DropdownMenuItem(value: 1, child: Text("Línea 30")),
+        DropdownMenuItem(value: 2, child: Text("Línea 9")),
+        DropdownMenuItem(value: 3, child: Text("Línea 158")),
+        DropdownMenuItem(value: 4, child: Text("Línea 31")),
+      ],
+      onChanged: (value) async {
+        idLineaSeleccionada = value;
+        puntos = await DBAyuda.obtenerPuntosPorLinea(value!);
+        setState(() {});
+      },
+    );
+  }
+
+  Widget _listaPuntos() {
+    if (idLineaSeleccionada == null) {
+      return const Center(child: Text("Seleccione una línea"));
+    }
+
+    if (puntos.isEmpty) {
+      return const Center(child: Text("No hay puntos registrados"));
+    }
+
+    return ListView.builder(
+      itemCount: puntos.length,
+      itemBuilder: (_, i) {
+        final p = puntos[i];
+        return Card(
+          child: ListTile(
+            leading: CircleAvatar(child: Text(p['orden'].toString())),
+            title: Text(p['nombre']),
+            subtitle:
+                Text("Tiempo al siguiente: ${p['tiempo_hasta_siguiente']} min"),
+          ),
+        );
+      },
+    );
+  }
+
+  void mostrarFormulario() {
+    final nombreCtrl = TextEditingController();
+    final ordenCtrl = TextEditingController();
+    final tiempoCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Nuevo Punto"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nombreCtrl, decoration: const InputDecoration(labelText: "Nombre")),
+            TextField(controller: ordenCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Posición")),
+            TextField(controller: tiempoCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Tiempo (min)")),
+          ],
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: agregarPunto,
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+          ElevatedButton(
+            onPressed: () async {
+              await DBAyuda.insertarPunto(
+                Punto(
+                  idLinea: idLineaSeleccionada!,
+                  nombre: nombreCtrl.text,
+                  orden: int.parse(ordenCtrl.text),
+                  tiempoHastaSiguiente: int.parse(tiempoCtrl.text),
+                ),
+              );
+              puntos = await DBAyuda.obtenerPuntosPorLinea(idLineaSeleccionada!);
+              setState(() {});
+              Navigator.pop(context);
+            },
+            child: const Text("Guardar"),
           ),
         ],
       ),
-      body: cargando
-          ? const Center(child: CircularProgressIndicator())
-          : puntos.isEmpty
-              ? const Center(child: Text('No hay puntos registrados'))
-              : ReorderableListView(
-                  onReorder: reordenar,
-                  children: [
-                    for (final punto in puntos)
-                      ListTile(
-                        key: ValueKey(punto['id']),
-                        title: Text(punto['nombre']),
-                        leading: const Icon(Icons.place),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit),
-                              onPressed: () => editarPunto(punto),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => eliminarPunto(punto['id']),
-                            ),
-                            const Icon(Icons.drag_handle),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
     );
   }
 }
