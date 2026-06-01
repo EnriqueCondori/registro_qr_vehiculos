@@ -21,7 +21,7 @@ class _AdministrarPuntosPageState extends State<AdministrarPuntosPage> {
       floatingActionButton: idLineaSeleccionada == null
           ? null
           : FloatingActionButton(
-              onPressed: () => mostrarFormulario(),
+              onPressed: mostrarFormulario,
               child: const Icon(Icons.add),
             ),
       body: Padding(
@@ -49,10 +49,16 @@ class _AdministrarPuntosPageState extends State<AdministrarPuntosPage> {
       ],
       onChanged: (value) async {
         idLineaSeleccionada = value;
-        puntos = await DBAyuda.obtenerPuntosPorLinea(value!);
-        setState(() {});
+        await _cargarPuntos();
       },
     );
+  }
+
+  Future<void> _cargarPuntos() async {
+    if (idLineaSeleccionada == null) return;
+    puntos = await DBAyuda.obtenerPuntosPorLinea(idLineaSeleccionada!);
+    if (!mounted) return;
+    setState(() {});
   }
 
   Widget _listaPuntos() {
@@ -72,11 +78,38 @@ class _AdministrarPuntosPageState extends State<AdministrarPuntosPage> {
           child: ListTile(
             leading: CircleAvatar(child: Text(p['orden'].toString())),
             title: Text(p['nombre']),
-            subtitle:
-                Text("Tiempo al siguiente: ${p['tiempo_hasta_siguiente']} min"),
+            subtitle: Text("Tiempo al siguiente: ${p['tiempo_hasta_siguiente']} min"),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _confirmarEliminarPunto(p['id'] as int),
+            ),
           ),
         );
       },
+    );
+  }
+
+  Future<void> _confirmarEliminarPunto(int idPunto) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Eliminar punto'),
+        content: const Text('¿Seguro que deseas eliminar este punto?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Eliminar')),
+        ],
+      ),
+    );
+
+    if (confirmado != true) return;
+
+    await DBAyuda.eliminarPunto(idPunto);
+    await _cargarPuntos();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Punto eliminado correctamente')),
     );
   }
 
@@ -101,6 +134,7 @@ class _AdministrarPuntosPageState extends State<AdministrarPuntosPage> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
           ElevatedButton(
             onPressed: () async {
+              if (idLineaSeleccionada == null) return;
               await DBAyuda.insertarPunto(
                 Punto(
                   idLinea: idLineaSeleccionada!,
@@ -109,8 +143,7 @@ class _AdministrarPuntosPageState extends State<AdministrarPuntosPage> {
                   tiempoHastaSiguiente: int.parse(tiempoCtrl.text),
                 ),
               );
-              puntos = await DBAyuda.obtenerPuntosPorLinea(idLineaSeleccionada!);
-              setState(() {});
+              await _cargarPuntos();
               Navigator.pop(context);
             },
             child: const Text("Guardar"),

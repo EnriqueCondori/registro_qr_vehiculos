@@ -32,7 +32,7 @@ class _HistorialRegistrosState extends State<HistorialRegistros> {
 
   Future<void> eliminarRegistro(int id) async {
     await DBAyuda.eliminarRegistro(id);
-    cargarRegistros();
+    await cargarRegistros();
 
     ScaffoldMessenger.of(
       context,

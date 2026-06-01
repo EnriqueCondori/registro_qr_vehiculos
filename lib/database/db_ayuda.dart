@@ -3,7 +3,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'package:registro_qr_vehiculos/config/puntos_config.dart';
 
 class DBAyuda {
   static Database? _db;
